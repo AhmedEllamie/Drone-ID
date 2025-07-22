@@ -327,16 +327,14 @@ class SineDetectionSystem:
                     ))
                 
                 # Check for takeoff detection (removed duplicate - now handled in process_sample)
-                # Detection complete when status becomes START
+                # Continue monitoring for status changes
                 if self.detector.get_drone_status() == "START" and self.detector.is_takeoff_detected():
-                    print("Total samples: {}".format(self.detector.sample_count))
-                    print("State changes: {}".format(self.detector.state_change_count))
-                    print("Reset count: {}".format(self.detector.reset_count))
-                    print("Detection time: {:.2f}s".format(current_time - start_time))
-                    break
+                    # Takeoff detected - continue monitoring for STOP status
+                    if self.detector.sample_count % 20 == 0:  # Print status every 20 samples
+                        print("Monitoring: Drone is STARTED - waiting for idle timeout...")
                 
-                # Check timeout
-                if current_time - start_time > max_duration_seconds:
+                # Check timeout (only if no takeoff detected yet)
+                if self.detector.get_drone_status() == "STOP" and current_time - start_time > max_duration_seconds:
                     print("TIMEOUT: No takeoff detected in {} seconds".format(max_duration_seconds))
                     break
                 
@@ -347,6 +345,13 @@ class SineDetectionSystem:
         except Exception as e:
             print("ERROR: {}".format(e))
         finally:
+            # Print final summary
+            print("\n=== FINAL SUMMARY ===")
+            print("Total samples processed: {}".format(self.detector.sample_count))
+            print("State changes: {}".format(self.detector.state_change_count))
+            print("Reset count: {}".format(self.detector.reset_count))
+            print("Final drone status: {}".format(self.detector.get_drone_status()))
+            print("Total runtime: {:.2f} seconds".format(utime.time() - start_time))
             self.stop()
 
 
@@ -362,7 +367,7 @@ if __name__ == "__main__":
             exit(1)
         
         print("Starting optimized detection...")
-        detection_system.run_detection_loop(max_duration_seconds=120, update_rate_ms=50)
+        detection_system.run_detection_loop(max_duration_seconds=300, update_rate_ms=50)  # 5 minutes monitoring
             
     except Exception as e:
         print("ERROR: {}".format(e))
