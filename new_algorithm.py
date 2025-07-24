@@ -73,7 +73,7 @@ class IMUSineDetector:
         """Check if any axis exceeds large threshold"""
         # Separate thresholds for accelerometer (g) and gyroscope (dps)
         accel_exceeded = (abs(sample['ax']) > self.LARGE_THRESH or
-                         abs(sample['ay']) > self.LARGE_THRESH or
+                abs(sample['ay']) > self.LARGE_THRESH or
                          abs(sample['az']) > self.LARGE_THRESH)
         
         gyro_exceeded = (abs(sample['gx']) > self.GYRO_LARGE_THRESH or

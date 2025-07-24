@@ -4,8 +4,8 @@ Imports existing algorithm and BLE beacon to broadcast drone status
 """
 
 import utime
-from usr.new_algorithm_final import SineDetectionSystem
-from usr.anna_advertising_beacon import BLEAdvertisingBeacon
+from new_algorithm_final import SineDetectionSystem
+from anna_advertising_beacon import BLEAdvertisingBeacon
 
 
 class DroneStatusBroadcaster:
@@ -154,7 +154,7 @@ if __name__ == "__main__":
             exit(1)
         
         print("Starting drone status broadcasting...")
-        broadcaster.run_broadcast_loop(max_duration_seconds=3000, update_rate_ms=50)  # 5 minutes monitoring
+        broadcaster.run_broadcast_loop(max_duration_seconds=300, update_rate_ms=50)  # 5 minutes monitoring
             
     except Exception as e:
         print("ERROR: {}".format(e)) 
