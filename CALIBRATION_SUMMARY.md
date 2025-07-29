@@ -20,16 +20,17 @@
 
 ### **🔧 Specific Changes Made**
 
-#### **1. Z-Axis Thresholds (More Sensitive)**
-- **Idle detection:** 0.05g (was 0.09g) - **75% reduction**
-- **Large movement:** 1.5g (was 0.9g) - **increased to prevent resets**
-- **Trend detection:** 0.05g margin (was 0.10g)
-- **Amplitude detection:** 0.05g minimum (was 0.10g)
+#### **1. Z-Axis Thresholds (LESS SENSITIVE - REDUCED FALSE STATES)**
+- **IDLE_THRESH:** 0.08g (increased from 0.05g) - for idle/motor detection
+- **LARGE_THRESH:** 1.5g (increased from 0.9g) - for excessive movement detection
+- **MARGIN:** 0.08g (increased from 0.05g) - for Z-axis trend detection
+- **MIN_AMPLITUDE:** 0.08g (increased from 0.05g) - for Z-axis amplitude detection
+- **Window filter:** 2.5g max (increased from 2.0g) - for Z-axis noise filtering
+- **Motor detection:** 0.04g (increased from 0.02g) - for motor start detection
 
-#### **2. NEW: State-Dependent Thresholds**
-- **Takeoff states:** 2.0g threshold (FIRST_FALL, SECOND_FALL, SECOND_RISE)
-- **Other states:** 1.5g threshold (IDLE, MOTOR_ON, FIRST_RISE)
-- **Prevents resets** during normal takeoff movements
+#### **2. Gyro Thresholds (DUAL SYSTEM)**
+- **GYRO_MOVEMENT_THRESH:** 150.0 dps - for movement indication in IDLE and MOTOR_ON states
+- **GYRO_LARGE_THRESH:** 300.0 dps - for unexpected movements in all other states
 
 #### **3. NEW: Sensitive Motor Detection**
 - **Movement threshold:** 0.02g (very low for motor detection)

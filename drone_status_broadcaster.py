@@ -112,11 +112,12 @@ class DroneStatusBroadcaster:
                 
                 # Debug output every 10 samples
                 if self.detection_system.detector.sample_count % 10 == 0:
-                    print("[{}] State: {} | Status: {} | AZ={:.3f} AX={:.3f} AY={:.3f}".format(
+                    print("[{}] State: {} | Status: {} | AZ={:.3f} AX={:.3f} AY={:.3f} GX={:.1f} GY={:.1f} GZ={:.1f}".format(
                         self.detection_system.detector.sample_count,
                         self.detection_system.detector.get_state_name(),
                         current_status,
-                        sample['az'], sample['ax'], sample['ay']
+                        sample['az'], sample['ax'], sample['ay'],
+                        sample['gx'], sample['gy'], sample['gz']
                     ))
                 
                 # Check timeout (only if no takeoff detected yet)

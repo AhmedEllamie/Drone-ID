@@ -24,6 +24,7 @@ class IMUSineDetector:
         self.LARGE_THRESH = 1.5  # Increased from 0.9 (allow larger takeoff movements)
         self.GYRO_LARGE_THRESH = 300.0  # Keep same for rotation
         self.MARGIN = 0.05  # Reduced from 0.10 (half) - for Z-axis trend detection
+        self.MOTOR_TO_RISE_MARGIN = 0.12  # Higher margin for MOTOR_ON to FIRST_RISE transition
         self.WINDOW_SIZE = 3
         self.MIN_AMPLITUDE = 0.05  # Reduced from 0.10 (half) - for Z-axis amplitude
         self.min_samples_before_transition = 3
@@ -31,12 +32,16 @@ class IMUSineDetector:
         # Time-based transition thresholds (seconds) - only for sine wave transitions
         self.TRANSITION_TIMEOUT = 5.0  # Max time between specific sine wave states (increased from 0.4s)
         
+        # Time conditions for state transitions
+        self.IDLE_MIN_TIME = 5.0  # Minimum time in IDLE before motor detection
+        self.MOTOR_ON_MIN_TIME = 1.5  # Minimum time in MOTOR_ON before rising trend detection
+        
         # State tracking
         self.state = self.STATE_IDLE
         self.accz_window = []
         self.sample_count = 0
         self.state_change_count = 0
-        self.state_entry_time = 0
+        self.state_entry_time = utime.time()  # Initialize with current time
         self.reset_count = 0
         
         # Drone status tracking
@@ -148,16 +153,20 @@ class IMUSineDetector:
         """More sensitive motor start detection for small drones"""
         # Check for any movement above very low threshold
         movement_threshold = 0.02  # Very low threshold for motor detection
+        max_movement_threshold = 0.08  # Max threshold to prevent false triggers
         
-        # Check if any axis shows movement
-        has_movement = (abs(sample['az']) > movement_threshold or
-                       abs(sample['ax']) > movement_threshold or
-                       abs(sample['ay']) > movement_threshold)
+        # Check if any axis shows movement within acceptable range
+        has_movement = ((abs(sample['az']) > movement_threshold and abs(sample['az']) < max_movement_threshold) or
+                       (abs(sample['ax']) > movement_threshold and abs(sample['ax']) < max_movement_threshold) or
+                       (abs(sample['ay']) > movement_threshold and abs(sample['ay']) < max_movement_threshold))
         
-        # Check for gyro movement (motor vibrations)
-        has_gyro_movement = (abs(sample['gx']) > 5.0 or
-                           abs(sample['gy']) > 5.0 or
-                           abs(sample['gz']) > 5.0)
+        # Check for gyro movement (motor vibrations) within acceptable range
+        gyro_threshold = 5.0  # Min gyro threshold
+        max_gyro_threshold = 15.0  # Max gyro threshold
+        
+        has_gyro_movement = ((abs(sample['gx']) > gyro_threshold and abs(sample['gx']) < max_gyro_threshold) or
+                           (abs(sample['gy']) > gyro_threshold and abs(sample['gy']) < max_gyro_threshold) or
+                           (abs(sample['gz']) > gyro_threshold and abs(sample['gz']) < max_gyro_threshold))
         
         if has_movement or has_gyro_movement:
             print("[{}] Motor start detected: AZ={:.3f} AX={:.3f} AY={:.3f} GX={:.1f} GY={:.1f} GZ={:.1f}".format(
@@ -199,17 +208,48 @@ class IMUSineDetector:
         if self.state == self.STATE_IDLE:
             if self.sample_count < self.min_samples_before_transition:
                 return self.state
+            
             # Use more sensitive motor detection
             if self.detect_motor_start(sample):
+                # Check if enough time has passed in IDLE state (only if not just reset)
+                if self.reset_count == 0 and current_time - self.state_entry_time < self.IDLE_MIN_TIME:
+                    # False positive - reset to IDLE
+                    self.reset("False positive: Motor detected before minimum IDLE time ({:.1f}s < {:.1f}s)".format(
+                        current_time - self.state_entry_time, self.IDLE_MIN_TIME
+                    ))
+                    return self.state
+                
                 self.state = self.STATE_MOTOR_ON
                 self.state_entry_time = current_time
                 self.accz_window = []
         
         elif self.state == self.STATE_MOTOR_ON:
             if self.is_simple_trend(self.accz_window, 'rising'):
-                self.state = self.STATE_FIRST_RISE
-                self.state_entry_time = current_time
-                self.accz_window = []
+                # Check if enough time has passed in MOTOR_ON state
+                if current_time - self.state_entry_time < self.MOTOR_ON_MIN_TIME:
+                    # False positive - reset to IDLE
+                    self.reset("False positive: Rising trend detected before minimum MOTOR_ON time ({:.1f}s < {:.1f}s)".format(
+                        current_time - self.state_entry_time, self.MOTOR_ON_MIN_TIME
+                    ))
+                    return self.state
+                
+                # Use higher margin for MOTOR_ON to FIRST_RISE transition
+                if len(self.accz_window) >= 2:
+                    amplitude = max(self.accz_window) - min(self.accz_window)
+                    if amplitude >= self.MIN_AMPLITUDE:
+                        # Check with higher margin for this specific transition
+                        if self.accz_window[-1] > self.accz_window[0] + self.MOTOR_TO_RISE_MARGIN:
+                            print("[{}] MOTOR_ON to FIRST_RISE: Using higher margin {:.3f}g - {:.3f} -> {:.3f}".format(
+                                self.sample_count, self.MOTOR_TO_RISE_MARGIN, self.accz_window[0], self.accz_window[-1]
+                            ))
+                            self.state = self.STATE_FIRST_RISE
+                            self.state_entry_time = current_time
+                            self.accz_window = []
+                        else:
+                            # Rising trend detected but not strong enough for this transition
+                            print("[{}] MOTOR_ON: Rising trend too weak for FIRST_RISE transition ({:.3f} < {:.3f} + {:.3f})".format(
+                                self.sample_count, self.accz_window[-1], self.accz_window[0], self.MOTOR_TO_RISE_MARGIN
+                            ))
         
         elif self.state == self.STATE_FIRST_RISE:
             # Check timeout for FIRST_RISE → FIRST_FALL transition
@@ -350,14 +390,14 @@ class IMUSineDetector:
         # Check if motors stopped (only in early states, not during flight)
         if self.state == self.STATE_MOTOR_ON or self.state == self.STATE_FIRST_RISE:
             total_movement = abs(sample['ax']) + abs(sample['ay']) + abs(sample['az'])
-            if total_movement < 0.01:  # Very strict threshold for motor stop detection
-                self.reset("Motors stopped - total movement: {:.3f}g < 0.01g".format(total_movement))
+            if total_movement < 0.005:  # Reduced from 0.01g to 0.005g for motor stop detection
+                self.reset("Motors stopped - total movement: {:.3f}g < 0.005g".format(total_movement))
                 return True
         
         # Check for excessive rotation (manual handling)
         max_gyro = max(abs(sample['gx']), abs(sample['gy']), abs(sample['gz']))
         if self.state != self.STATE_IDLE and self.state != self.STATE_STEADY:
-            if max_gyro > 100.0:  # High rotation threshold
+            if max_gyro > 70.0:  # High rotation threshold
                 self.reset("Excessive rotation detected: {:.1f}dps > 100.0dps".format(max_gyro))
                 return True
         

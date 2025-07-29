@@ -1,0 +1,166 @@
+stateDiagram-v2
+    [*] --> IDLE : System Start
+    
+    %% IDLE STATE
+    IDLE : IDLE STATE
+    note right of IDLE
+        Entry: System initialized
+        Entry: Reset from any state
+        Entry: Landing confirmed
+        
+        Thresholds:
+        • Accel: -0.5g to +0.08g
+        • Gyro: -20.0 to +20.0 dps
+        • Large Movement: ±1.5g
+        • Gyro Movement: ±100.0 dps
+        • X/Y Movement: ±0.8g
+        • Total Movement: >0.01g
+        • Rotation: ±100.0 dps
+    end note
+    
+    %% MOTOR_ON STATE
+    MOTOR_ON : MOTOR_ON STATE
+    note right of MOTOR_ON
+        Entry: Motor start detected
+        
+        Thresholds: Same as IDLE +
+        • Window Filter: -0.5g to +2.5g
+        • Trend Amplitude: >0.08g
+        • Trend Margin: >0.08g
+    end note
+    
+    %% FIRST_RISE STATE
+    FIRST_RISE : FIRST_RISE STATE
+    note right of FIRST_RISE
+        Entry: Rising trend detected
+        
+        Thresholds: Same as MOTOR_ON +
+        • Transition Timeout: 5.0s
+    end note
+    
+    %% FIRST_FALL STATE
+    FIRST_FALL : FIRST_FALL STATE
+    note right of FIRST_FALL
+        Entry: Falling trend detected
+        
+        Thresholds:
+        • Large Movement: ±2.0g
+        • Gyro Large: ±300.0 dps
+        • X/Y Movement: ±1.0g
+        • Transition Timeout: 5.0s
+    end note
+    
+    %% SECOND_FALL STATE
+    SECOND_FALL : SECOND_FALL STATE
+    note right of SECOND_FALL
+        Entry: Second falling trend
+        
+        Thresholds: Same as FIRST_FALL
+    end note
+    
+    %% SECOND_RISE STATE
+    SECOND_RISE : SECOND_RISE STATE
+    note right of SECOND_RISE
+        Entry: Rising trend detected
+        
+        Thresholds: Same as SECOND_FALL
+    end note
+    
+    %% STEADY STATE
+    STEADY : STEADY STATE
+    note right of STEADY
+        Entry: Complete sine wave
+        Entry: Takeoff successful
+        
+        Thresholds:
+        • Landing Detection: ±0.03g
+        • Landing Gyro: ±10.0 dps
+        • Large Movement: ±1.5g
+        • Gyro Large: ±300.0 dps
+        • Landing Check: 10.0s
+    end note
+    
+    %% TRANSITIONS FROM IDLE
+    IDLE --> MOTOR_ON : Motor Detection
+    IDLE --> IDLE : Large Threshold Exceeded
+    IDLE --> IDLE : Excessive X/Y Movement
+    IDLE --> IDLE : Excessive Rotation
+    IDLE --> IDLE : Idle Timeout (10s)
+    
+    %% TRANSITIONS FROM MOTOR_ON
+    MOTOR_ON --> FIRST_RISE : Rising Trend
+    MOTOR_ON --> IDLE : Large Threshold Exceeded
+    MOTOR_ON --> IDLE : Excessive X/Y Movement
+    MOTOR_ON --> IDLE : Motor Stop (<0.01g)
+    MOTOR_ON --> IDLE : Excessive Rotation
+    
+    %% TRANSITIONS FROM FIRST_RISE
+    FIRST_RISE --> FIRST_FALL : Falling Trend
+    FIRST_RISE --> IDLE : Large Threshold Exceeded
+    FIRST_RISE --> IDLE : Excessive X/Y Movement
+    FIRST_RISE --> IDLE : Motor Stop (<0.01g)
+    FIRST_RISE --> IDLE : Excessive Rotation
+    FIRST_RISE --> IDLE : Timeout (5s)
+    
+    %% TRANSITIONS FROM FIRST_FALL
+    FIRST_FALL --> SECOND_FALL : Falling Trend
+    FIRST_FALL --> IDLE : Large Threshold Exceeded
+    FIRST_FALL --> IDLE : Excessive X/Y Movement
+    FIRST_FALL --> IDLE : Excessive Rotation
+    FIRST_FALL --> IDLE : Timeout (5s)
+    
+    %% TRANSITIONS FROM SECOND_FALL
+    SECOND_FALL --> SECOND_RISE : Rising Trend
+    SECOND_FALL --> IDLE : Large Threshold Exceeded
+    SECOND_FALL --> IDLE : Excessive X/Y Movement
+    SECOND_FALL --> IDLE : Excessive Rotation
+    SECOND_FALL --> IDLE : Timeout (5s)
+    
+    %% TRANSITIONS FROM SECOND_RISE
+    SECOND_RISE --> STEADY : Immediate Transition
+    SECOND_RISE --> IDLE : Large Threshold Exceeded
+    SECOND_RISE --> IDLE : Excessive Rotation
+    
+    %% TRANSITIONS FROM STEADY
+    STEADY --> IDLE : Landing Confirmed (10s)
+    STEADY --> IDLE : Large Threshold Exceeded
+    STEADY --> IDLE : Excessive Rotation
+    
+    %% STATUS ANNOTATIONS
+    note left of IDLE
+        Status: STOP
+    end note
+    note left of MOTOR_ON
+        Status: STOP
+    end note
+    note left of FIRST_RISE
+        Status: STOP
+    end note
+    note left of FIRST_FALL
+        Status: STOP
+    end note
+    note left of SECOND_FALL
+        Status: STOP
+    end note
+    note left of SECOND_RISE
+        Status: STOP
+    end note
+    note left of STEADY
+        Status: START
+    end note
+    
+    %% RESET SYSTEM
+    note bottom of IDLE
+        RESET SYSTEM
+        • Large Threshold Exceeded
+        • Excessive X/Y Movement
+        • Motor Stop Detection
+        • Excessive Rotation
+        • Transition Timeout
+        
+        Actions:
+        • State → IDLE
+        • Status → STOP
+        • Clear windows/timers
+        • Increment reset counter
+    end note 
