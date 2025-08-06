@@ -142,8 +142,8 @@ class DroneStatusBroadcaster:
             self.stop()
 
 
-# Main execution
-if __name__ == "__main__":
+def main():
+    """Main function to run the drone status broadcaster"""
     try:
         from usr.config_manager import ConfigManager
         config_mgr = ConfigManager()
@@ -151,10 +151,17 @@ if __name__ == "__main__":
         
         if not broadcaster.start():
             print("ERROR: Failed to start drone status broadcaster")
-            exit(1)
+            print("Continuing without BLE broadcasting...")
+            # Continue without BLE - just run detection
+            broadcaster.detection_system.run_detection_loop(max_duration_seconds=3000, update_rate_ms=50)
+            return
         
         print("Starting drone status broadcasting...")
         broadcaster.run_broadcast_loop(max_duration_seconds=3000, update_rate_ms=50)  # 5 minutes monitoring
             
     except Exception as e:
-        print("ERROR: {}".format(e)) 
+        print("ERROR: {}".format(e))
+
+# Main execution
+if __name__ == "__main__":
+    main() 

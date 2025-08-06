@@ -252,11 +252,11 @@ class BLEAdvertisingBeacon:
                 else:
                     print("✅ Data Length Extension enabled")
             
-            # Set advertising interval (optimized for consistent 100ms updates)
+            # Set advertising interval (optimized for 5-second updates)
             # Intervals are in 0.625ms units, so: 
-            # For 100ms exactly: 160 units, but make them identical for consistency
-            self.send_at_command("AT+UBTLECFG=1,160")  # Min interval: 100ms exactly
-            self.send_at_command("AT+UBTLECFG=2,160")  # Max interval: 100ms exactly (same as min)
+            # For 5 seconds exactly: 5000ms ÷ 0.625ms = 8000 units
+            self.send_at_command("AT+UBTLECFG=1,8000")  # Min interval: 5 seconds exactly
+            self.send_at_command("AT+UBTLECFG=2,8000")  # Max interval: 5 seconds exactly (same as min)
             
             # Set advertising channels (all channels for maximum reliability)
             self.send_at_command("AT+UBTLECFG=3,7")
@@ -266,9 +266,7 @@ class BLEAdvertisingBeacon:
             self.send_at_command("AT+UBTLECFG=5,6")   # Connection interval max (7.5ms)
             self.send_at_command("AT+UBTLECFG=6,0")   # Slave latency (0 for lowest latency)
             self.send_at_command("AT+UBTLECFG=7,100") # Supervision timeout (1000ms)
-            
-            # Clear BR/EDR not supported flag
-            self.send_at_command("AT+UBTLECFG=25,0")
+
             
             self.is_initialized = True
             
@@ -299,7 +297,16 @@ class BLEAdvertisingBeacon:
             adv_data = self.create_advertising_data(initial_message, debug=True)
             print("Final advertising data: " + adv_data)
             print("Data length: " + str(len(adv_data) // 2) + " bytes")
+            
+            # Try to set advertising data, with fallback if it fails
             result = self.send_at_command("AT+UBTAD=" + adv_data)
+            
+            # If that fails, try a simpler approach
+            if "ERROR" in result:
+                print("Trying simpler advertising data format...")
+                # Use just device name without manufacturer data
+                simple_data = "0201060D09" + self.string_to_hex(self.device_name)
+                result = self.send_at_command("AT+UBTAD=" + simple_data)
             
             if "ERROR" in result:
                 print("Failed to set advertising data")
@@ -518,6 +525,76 @@ class BLEAdvertisingBeacon:
             
         self.is_initialized = False
         print("🔌 BLE beacon closed")
+
+    def factory_reset(self):
+        """Complete factory reset - stops all services and resets to default settings"""
+        print("=== FACTORY RESET INITIATED ===")
+        
+        try:
+            # Step 1: Stop all advertising and services
+            print("1. Stopping all advertising and services...")
+            self.send_at_command("AT+UBTDM=0")  # Stop advertising
+            self.send_at_command("AT+UBTGSER=0")  # Stop GATT server if running
+            
+            # Step 2: Reset all BLE parameters to factory defaults
+            print("2. Resetting BLE parameters to factory defaults...")
+            
+            # Reset advertising parameters with HIGH INTERVAL (5 seconds)
+            self.send_at_command("AT+UBTLECFG=1,8000")  # Reset min interval to 5 seconds (8000 units)
+            self.send_at_command("AT+UBTLECFG=2,8000")  # Reset max interval to 5 seconds (8000 units)
+            self.send_at_command("AT+UBTLECFG=3,7")    # Reset advertising channels
+            self.send_at_command("AT+UBTLECFG=4,6")    # Reset connection interval min
+            self.send_at_command("AT+UBTLECFG=5,6")    # Reset connection interval max
+            self.send_at_command("AT+UBTLECFG=6,0")    # Reset slave latency
+            self.send_at_command("AT+UBTLECFG=7,100")  # Reset supervision timeout
+            self.send_at_command("AT+UBTLECFG=25,0")   # Reset BR/EDR flag
+            self.send_at_command("AT+UBTLECFG=26,0")   # Reset Data Length Extension
+            
+            # Step 3: Reset device name to default
+            print("3. Resetting device name to default...")
+            self.send_at_command('AT+UBTLN="ANNA-B4"')  # Reset to default name
+            
+            # Step 4: Reset connection mode
+            print("4. Resetting connection mode...")
+            self.send_at_command("AT+UBTCM=0")  # Reset to non-connectable mode
+            
+            # Step 5: Clear all stored data and settings
+            print("5. Clearing stored data and settings...")
+            self.send_at_command("AT+UBTAD=")  # Clear advertising data
+            
+            # Step 6: Save settings before module reset
+            print("6. Saving settings...")
+            self.send_at_command("AT+UBTSAVE")  # Save all settings to flash
+            
+            # Step 7: Perform module reset
+            print("7. Performing module reset...")
+            self.send_at_command("AT+CFUN=1,1")  # Full reset (if supported)
+            
+            # Step 8: Reset internal state
+            print("8. Resetting internal state...")
+            self.is_advertising = False
+            self.is_connected = False
+            self.connection_handle = None
+            self.is_initialized = False
+            self.need_resume_advertising = False
+            self.current_message = ""
+            self.device_name = "ANNA-B4"  # Reset to default
+            self.use_extended_advertising = False
+            self.message_in_device_name = False
+            self.max_data_length = 28
+            
+            print("✅ FACTORY RESET COMPLETED")
+            print("📱 Device name reset to: 'ANNA-B4'")
+            print("📡 All services stopped")
+            print("⚙️ All parameters reset to factory defaults with HIGH INTERVAL (5s)")
+            print("💾 Settings saved before reset")
+            print("🔄 Module reset performed")
+            
+            return True
+            
+        except Exception as e:
+            print("❌ Factory reset failed: " + str(e))
+            return False
 
     def test_advertising_limits(self):
         """Test to find the actual advertising data limits"""
@@ -792,3 +869,65 @@ class BLEGATTServer:
             self.uart = None
         self.is_initialized = False
         print("🔌 GATT server closed")
+
+    def factory_reset(self):
+        """Complete factory reset for GATT server"""
+        print("=== GATT SERVER FACTORY RESET INITIATED ===")
+        
+        try:
+            # Step 1: Stop all services
+            print("1. Stopping GATT server and advertising...")
+            self.send_at_command("AT+UBTDM=0")  # Stop advertising
+            self.send_at_command("AT+UBTGSER=0")  # Stop GATT server
+            
+            # Step 2: Reset all parameters to factory defaults with HIGH INTERVAL
+            print("2. Resetting GATT parameters to factory defaults...")
+            self.send_at_command("AT+UBTLECFG=1,8000")  # Reset min interval to 5 seconds
+            self.send_at_command("AT+UBTLECFG=2,8000")  # Reset max interval to 5 seconds
+            self.send_at_command("AT+UBTLECFG=3,7")    # Reset channels
+            self.send_at_command("AT+UBTLECFG=4,6")    # Reset connection interval min
+            self.send_at_command("AT+UBTLECFG=5,6")    # Reset connection interval max
+            self.send_at_command("AT+UBTLECFG=6,0")    # Reset slave latency
+            self.send_at_command("AT+UBTLECFG=7,100")  # Reset supervision timeout
+            self.send_at_command("AT+UBTLECFG=26,0")   # Reset Data Length Extension
+            
+            # Step 3: Reset device name
+            print("3. Resetting device name to default...")
+            self.send_at_command('AT+UBTLN="ANNA-B4"')
+            
+            # Step 4: Reset connection mode
+            print("4. Resetting connection mode...")
+            self.send_at_command("AT+UBTCM=0")  # Reset to non-connectable
+            
+            # Step 5: Clear all data
+            print("5. Clearing all stored data...")
+            self.send_at_command("AT+UBTAD=")  # Clear advertising data
+            
+            # Step 6: Save settings before module reset
+            print("6. Saving settings...")
+            self.send_at_command("AT+UBTSAVE")  # Save all settings to flash
+            
+            # Step 7: Module reset
+            print("7. Performing module reset...")
+            self.send_at_command("AT+CFUN=1,1")  # Full reset
+            
+            # Step 8: Reset internal state
+            print("8. Resetting internal state...")
+            self.is_connected = False
+            self.connection_handle = None
+            self.is_initialized = False
+            self.notifications_enabled = False
+            self.device_name = "ANNA-B4"
+            
+            print("✅ GATT SERVER FACTORY RESET COMPLETED")
+            print("📱 Device name reset to: 'ANNA-B4'")
+            print("📡 All GATT services stopped")
+            print("⚙️ All parameters reset to factory defaults with HIGH INTERVAL (5s)")
+            print("💾 Settings saved before reset")
+            print("🔄 Module reset performed")
+            
+            return True
+            
+        except Exception as e:
+            print("❌ GATT server factory reset failed: " + str(e))
+            return False

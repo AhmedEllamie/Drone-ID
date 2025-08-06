@@ -41,7 +41,7 @@ class IMUSineDetector:
         self.accz_window = []
         self.sample_count = 0
         self.state_change_count = 0
-        self.state_entry_time = utime.time()  # Initialize with current time
+        self.state_entry_time = 0
         self.reset_count = 0
         
         # Drone status tracking
@@ -50,6 +50,36 @@ class IMUSineDetector:
         self.idle_timeout = 10.0  # 10 seconds
         self.landing_check_start = None  # Track landing check time
         self.landing_check_duration = 10.0  # 10 seconds to confirm landing
+        
+        # Real-time Analytics
+        self.analytics = {
+            'start_time': utime.time(),
+            'total_samples': 0,
+            'state_durations': {},  # Track time spent in each state
+            'state_transitions': [],  # History of state transitions
+            'performance_metrics': {
+                'avg_sample_rate': 0,
+                'detection_time': 0,
+                'false_positive_rate': 0,
+                'reset_frequency': 0
+            },
+            'data_statistics': {
+                'accel_stats': {'min': [], 'max': [], 'mean': [], 'std': []},
+                'gyro_stats': {'min': [], 'max': [], 'mean': [], 'std': []},
+                'trend_analysis': {'rising_count': 0, 'falling_count': 0, 'no_trend_count': 0}
+            },
+            'threshold_analysis': {
+                'motor_detections': 0,
+                'large_threshold_exceeded': 0,
+                'reset_reasons': {}
+            },
+            'real_time_alerts': []
+        }
+        
+        # Initialize state durations
+        state_names = ["IDLE", "MOTOR_ON", "FIRST_RISE", "FIRST_FALL", "SECOND_FALL", "SECOND_RISE", "STEADY"]
+        for state_name in state_names:
+            self.analytics['state_durations'][state_name] = 0
     
     def reset(self, reason=None):
         """Reset detector to idle state"""
@@ -118,6 +148,12 @@ class IMUSineDetector:
                 abs(sample['ax']), abs(sample['ay']), abs(sample['az']),
                 abs(sample['gx']), abs(sample['gy']), abs(sample['gz'])
             ))
+            # Record analytics
+            self.record_large_threshold_exceeded()
+            self.add_real_time_alert("THRESHOLD_EXCEEDED", 
+                "Large threshold exceeded: AX={:.3f} AY={:.3f} AZ={:.3f} GX={:.1f} GY={:.1f} GZ={:.1f}".format(
+                    sample['ax'], sample['ay'], sample['az'], sample['gx'], sample['gy'], sample['gz']), 
+                "WARNING")
         
         return exceeded
     
