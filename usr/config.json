@@ -1,0 +1,127 @@
+{   
+    "network": {
+        "apn": "TMS",
+        "apn_username": "",
+        "apn_password": "",
+        "apn_type": "ip",
+        "apn_auth_type": "none", 
+        "sms": {
+            "enabled": true,
+            "sms_number": "+1234567890",
+            "poll_interval": 15
+        },
+        
+        "timeout": 10, 
+        "retry_count": 5, 
+        "sim_check_retries": 5,
+        "signal_warn_threshold": 2,
+        "preferred_network": "4G",
+        "monitor_interval": 180,
+        "enable_signal_recovery": true,
+        "latency_check": {
+            "enabled": true,
+            "ping_server": "8.8.4.4",
+            "timeout": 5,
+            "count": 5
+        },
+        "retry_policy": {
+            "max_retries": 5,
+            "backoff_factor": 2,
+            "max_backoff": 60
+        },
+        "validation_level": "minimal",
+        "quick_check_interval": 60,
+        "slow_check_interval": 180,
+        "comprehensive_check_interval": 600
+    },
+    "mqtt": {
+        "broker2": {
+            "host": "5.195.214.230",
+            "port": 1884,
+            "username": "",
+            "password": "",
+            "keepalive": 60,
+            "qos": 0,
+            "ssl": false
+        },
+        "broker1": {
+            "host": "tatweer.fortiddns.com",
+            "port": 48112,
+            "username": "",
+            "password": "",
+            "keepalive": 60,
+            "qos": 0,
+            "ssl": false
+        }, 
+		"reconnect_timout": 10000,
+        "topics_prefix": "dts",
+        "device_imei": "DT101",
+        "publish_interval_sec": 10
+    },
+    "ota": {
+        "server_url": "http://ota-update-server.com",
+        "update_path": "",
+        "check_interval": 3600
+    },
+    "serial": {
+        "gnss": {
+            "mode":"external",
+            "port":2,
+            "baudrate": 115200,
+            "power_pin":20,
+            "databits": 8,
+            "parity": 0,
+            "stopbits": 1,
+            "flowctl": 0,
+            "transparent_mode": false
+        }
+        },
+    "bluetooth": {
+        "uart_port": 1,
+        "device_name": "DTS_Drone",
+        "use_extended_advertising": false,
+        "message_in_device_name": false
+    },
+    "logging": {
+        "level": "DEBUG",
+        "file": "debug.log", 
+        "offline_log": true
+    },
+    "sleep_mode": {
+        "inactivity_timeout": 60,
+        "movement_threshold": 0.5,
+        "wake_sensitivity": 0.1,
+        "sleep_interval": 600,
+        "low_power_sensors": false,
+        "gps_sleep_enabled": false,
+        "imu_always_on": true
+    },
+    "imu_cfg": {
+        "harsh_event_threshold": 1.2,
+        "movement_detection_enabled": true,
+        "calibration_samples": 100,
+        "flight_detection": {
+            "enabled": true,
+            "altitude_threshold": 5.0,
+            "accel_threshold": 0.2
+        },
+        "propeller_detection": {
+            "enabled": true,
+            "sensitivity": "high"
+        }
+    },
+    "alarms": {
+        "battery": {
+            "enabled": false,
+            "low_threshold": 20,
+            "critical_threshold": 10,
+            "check_interval": 60
+        },
+        "tamper": {
+            "enabled": false,
+            "tx_gpio": 25,
+            "rx_gpio": 9,
+            "debounce_time": 100
+        }
+    }
+}
