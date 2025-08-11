@@ -1,6 +1,9 @@
 """
 EC200A BLE Factory Reset and Configuration Algorithm
 Based on ublox AT Commands and patterns from anna_advertising_beacon.py
+
+Author: Ahmed Ellamie
+Email: ahmed.ellamiee@gmail.com
 """
 
 from machine import UART

@@ -1,3 +1,10 @@
+"""
+ANNA-B4 BLE Advertising Beacon for integration with other code
+
+Author: Ahmed Ellamie
+Email: ahmed.ellamiee@gmail.com
+"""
+
 from machine import UART
 import time
 

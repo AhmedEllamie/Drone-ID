@@ -2,6 +2,9 @@
 Sine Wave Detection Algorithm for Drone Takeoff
 Compatible with QuecPython and existing IMU Handler
 OPTIMIZED VERSION - Essential functions only
+
+Author: Ahmed Ellamie
+Email: ahmed.ellamiee@gmail.com
 """
 
 import utime

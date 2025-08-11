@@ -1,5 +1,8 @@
 # Drone Detection Calibration Summary
 
+**Author:** Ahmed Ellamie  
+**Email:** ahmed.ellamiee@gmail.com
+
 ## 🎯 **Calibration for Small Drone with Low Movement**
 
 ### **📊 Threshold Changes (Z-Axis More Sensitive)**

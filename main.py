@@ -1,6 +1,9 @@
 """
 Drone Status Broadcaster - Main File
 Imports existing algorithm and BLE beacon to broadcast drone status
+
+Author: Ahmed Ellamie
+Email: ahmed.ellamiee@gmail.com
 """
 
 import utime

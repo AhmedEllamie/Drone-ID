@@ -1,5 +1,8 @@
 # Real-Time Drone Takeoff Detection
 
+**Author:** Ahmed Ellamie  
+**Email:** ahmed.ellamiee@gmail.com
+
 A Python system for real-time detection of drone takeoff sequences using IMU (accelerometer) data from a serial port.
 
 ## Features
